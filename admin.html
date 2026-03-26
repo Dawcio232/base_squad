@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dawcio Power Squad Admin</title>
+    <link rel="stylesheet" href="./hub.css" />
+    <link rel="stylesheet" href="./admin.css" />
+</head>
+<body>
+    <div class="grid"></div>
+
+    <div class="shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark"><span>D</span></div>
+                <div class="brand-copy">
+                    <h1>DAWCIO POWER SQUAD</h1>
+                    <p>Admin Control Surface</p>
+                </div>
+            </div>
+
+            <div class="status">
+                <a class="button secondary" href="./hub.html">Back To Hub</a>
+                <div class="chip" id="adminStatus">Checking Access</div>
+                <button class="button secondary hidden" id="logoutButton" type="button">Log Out</button>
+            </div>
+        </header>
+
+        <div class="admin-grid" id="adminGrid">
+            <div class="admin-column">
+                <section class="panel section">
+                    <div class="section-head">
+                        <h3>User Approvals</h3>
+                        <span>Approve New Accounts</span>
+                    </div>
+                    <div class="list" id="profilesList"></div>
+                </section>
+
+                <section class="panel section">
+                    <div class="section-head">
+                        <h3>Points</h3>
+                        <span>Update User Scores</span>
+                    </div>
+                    <div class="list" id="pointsList"></div>
+                </section>
+            </div>
+
+            <div class="admin-column">
+                <section class="panel section">
+                    <div class="section-head">
+                        <h3>New Announcement</h3>
+                        <span>Push Squad Updates</span>
+                    </div>
+                    <div class="field-grid">
+                        <input id="announcementTitle" type="text" placeholder="title" />
+                        <textarea class="textarea" id="announcementBody" placeholder="announcement body"></textarea>
+                    </div>
+                    <div class="actions">
+                        <button class="button" id="createAnnouncementButton" type="button">Publish Announcement</button>
+                    </div>
+                </section>
+
+                <section class="panel section">
+                    <div class="section-head">
+                        <h3>New Challenge</h3>
+                        <span>Create Assignment</span>
+                    </div>
+                    <div class="field-grid">
+                        <input id="challengeTitle" type="text" placeholder="title" />
+                        <input id="challengeSummary" type="text" placeholder="short summary" />
+                        <textarea class="textarea" id="challengeDetails" placeholder="full challenge details"></textarea>
+                        <div class="inline-grid">
+                            <input id="challengePoints" type="number" min="0" placeholder="points" />
+                            <input id="challengeStatus" type="text" placeholder="open" value="open" />
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button class="button" id="createChallengeButton" type="button">Create Challenge</button>
+                    </div>
+                </section>
+
+                <section class="panel section">
+                    <div class="section-head">
+                        <h3>New Link</h3>
+                        <span>Update Hub Directory</span>
+                    </div>
+                    <div class="field-grid">
+                        <input id="linkTitle" type="text" placeholder="title" />
+                        <input id="linkUrl" type="url" placeholder="https://..." />
+                        <input id="linkDescription" type="text" placeholder="description" />
+                        <div class="inline-grid">
+                            <input id="linkTag" type="text" placeholder="tag" value="link" />
+                            <input id="linkSort" type="number" min="0" placeholder="sort" value="0" />
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button class="button" id="createLinkButton" type="button">Create Link</button>
+                    </div>
+                </section>
+
+                <section class="panel section">
+                    <div class="section-head">
+                        <h3>Admin Feed</h3>
+                        <span>Operation Log</span>
+                    </div>
+                    <div class="message" id="adminMessage"></div>
+                </section>
+            </div>
+        </div>
+
+        <section class="panel section admin-lock hidden" id="adminLock">
+            <h3>Access Restricted</h3>
+            <p class="empty">This page requires an approved admin account.</p>
+        </section>
+    </div>
+
+    <script src="./app-config.js"></script>
+    <script type="module" src="./admin.js"></script>
+</body>
+</html>
