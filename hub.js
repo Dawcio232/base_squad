@@ -137,11 +137,11 @@ async function loadProfileAndAcceptances() {
     const userId = state.session.user.id;
 
     const [profileRes, acceptancesRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase.rpc("get_my_profile"),
         supabase.from("challenge_acceptances").select("*").eq("user_id", userId).order("created_at", { ascending: false })
     ]);
 
-    state.profile = profileRes.data || null;
+    state.profile = profileRes.data?.[0] || null;
     state.acceptances = acceptancesRes.data || [];
 }
 
