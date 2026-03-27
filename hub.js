@@ -388,7 +388,7 @@ async function signIn() {
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
         loginMessage.textContent = error.message;
         loginMessage.className = "message error";
@@ -397,9 +397,12 @@ async function signIn() {
         return;
     }
 
+    state.session = data.session;
+    await loadProfileAndAcceptances();
     loginMessage.textContent = "Authentication Confirmed";
     loginMessage.className = "message success";
     passwordInput.value = "";
+    renderAll();
 }
 
 async function logout() {
