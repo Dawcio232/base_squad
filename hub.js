@@ -60,6 +60,14 @@ async function init() {
     await loadAll();
     renderAll();
 
+    setInterval(async () => {
+        await refreshLiveContent();
+    }, 10000);
+
+    window.addEventListener("focus", async () => {
+        await refreshLiveContent();
+    });
+
     supabase.auth.onAuthStateChange(async (_event, session) => {
         state.session = session;
         await loadProfileAndAcceptances();
@@ -98,6 +106,14 @@ async function loadAll() {
         loadPublicData(),
         loadProfileAndAcceptances()
     ]);
+}
+
+async function refreshLiveContent() {
+    await loadPublicData();
+    if (state.session?.user) {
+        await loadProfileAndAcceptances();
+    }
+    renderAll();
 }
 
 async function loadPublicData() {
