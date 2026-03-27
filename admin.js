@@ -141,7 +141,7 @@ async function loginDirectly() {
     adminAuthMessage.textContent = "";
     adminAuthMessage.className = "message";
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
         adminEmailInput.classList.add("error");
         adminPasswordInput.classList.add("error");
@@ -150,9 +150,12 @@ async function loginDirectly() {
         return;
     }
 
+    state.session = data.session;
+    await loadAdminState();
     adminPasswordInput.value = "";
     adminAuthMessage.textContent = "Authentication confirmed";
     adminAuthMessage.className = "message success";
+    renderGate();
 }
 
 function renderProfiles() {
