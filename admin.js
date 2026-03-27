@@ -87,11 +87,11 @@ async function loadAdminState() {
     const userId = state.session.user.id;
 
     const [profileRes, profilesRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-        supabase.from("profiles").select("*").order("created_at", { ascending: false })
+        supabase.rpc("get_my_profile"),
+        supabase.rpc("admin_get_profiles")
     ]);
 
-    state.profile = profileRes.data || null;
+    state.profile = profileRes.data?.[0] || null;
     state.profiles = profilesRes.data || [];
 
     if (state.profile?.is_admin && state.profile?.approved) {
@@ -311,7 +311,10 @@ async function createLink() {
 }
 
 async function toggleApproval(id, approved) {
-    const { error } = await supabase.from("profiles").update({ approved }).eq("id", id);
+    const { error } = await supabase.rpc("admin_set_profile_approval", {
+        target_id: id,
+        new_approved: approved
+    });
     if (error) return showMessage(error.message, true);
     await loadAdminState();
     renderGate();
@@ -319,7 +322,10 @@ async function toggleApproval(id, approved) {
 }
 
 async function toggleAdmin(id, isAdmin) {
-    const { error } = await supabase.from("profiles").update({ is_admin: isAdmin }).eq("id", id);
+    const { error } = await supabase.rpc("admin_set_profile_admin", {
+        target_id: id,
+        new_is_admin: isAdmin
+    });
     if (error) return showMessage(error.message, true);
     await loadAdminState();
     renderGate();
@@ -329,7 +335,10 @@ async function toggleAdmin(id, isAdmin) {
 async function updatePoints(id) {
     const field = document.getElementById(`points-${id}`);
     const points = Number(field.value || 0);
-    const { error } = await supabase.from("profiles").update({ points }).eq("id", id);
+    const { error } = await supabase.rpc("admin_update_profile_points", {
+        target_id: id,
+        new_points: points
+    });
     if (error) return showMessage(error.message, true);
     await loadAdminState();
     renderGate();
