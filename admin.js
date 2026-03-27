@@ -7,6 +7,11 @@ const adminStatus = document.getElementById("adminStatus");
 const logoutButton = document.getElementById("logoutButton");
 const adminGrid = document.getElementById("adminGrid");
 const adminLock = document.getElementById("adminLock");
+const adminAuth = document.getElementById("adminAuth");
+const adminEmailInput = document.getElementById("adminEmailInput");
+const adminPasswordInput = document.getElementById("adminPasswordInput");
+const adminLoginButton = document.getElementById("adminLoginButton");
+const adminAuthMessage = document.getElementById("adminAuthMessage");
 const profilesList = document.getElementById("profilesList");
 const pointsList = document.getElementById("pointsList");
 const contentList = document.getElementById("contentList");
@@ -50,9 +55,21 @@ async function init() {
 
 function bindEvents() {
     logoutButton.addEventListener("click", logout);
+    adminLoginButton.addEventListener("click", loginDirectly);
     createAnnouncementButton.addEventListener("click", createAnnouncement);
     createChallengeButton.addEventListener("click", createChallenge);
     createLinkButton.addEventListener("click", createLink);
+
+    [adminEmailInput, adminPasswordInput].forEach((field) => {
+        field.addEventListener("input", () => {
+            field.classList.remove("error");
+            adminAuthMessage.textContent = "";
+            adminAuthMessage.className = "message";
+        });
+        field.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") loginDirectly();
+        });
+    });
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
         state.session = session;
@@ -92,6 +109,7 @@ function renderGate() {
     adminGrid.classList.toggle("hidden", !allowed);
     adminLock.classList.toggle("hidden", allowed);
     logoutButton.classList.toggle("hidden", !state.session?.user);
+    adminAuth.classList.toggle("hidden", !!state.session?.user);
 
     if (!state.session?.user) {
         adminStatus.textContent = "Not Logged In";
@@ -112,6 +130,29 @@ function renderGate() {
     renderProfiles();
     renderPoints();
     renderContent();
+}
+
+async function loginDirectly() {
+    const email = adminEmailInput.value.trim();
+    const password = adminPasswordInput.value.trim();
+
+    adminEmailInput.classList.remove("error");
+    adminPasswordInput.classList.remove("error");
+    adminAuthMessage.textContent = "";
+    adminAuthMessage.className = "message";
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        adminEmailInput.classList.add("error");
+        adminPasswordInput.classList.add("error");
+        adminAuthMessage.textContent = error.message;
+        adminAuthMessage.className = "message error";
+        return;
+    }
+
+    adminPasswordInput.value = "";
+    adminAuthMessage.textContent = "Authentication confirmed";
+    adminAuthMessage.className = "message success";
 }
 
 function renderProfiles() {
