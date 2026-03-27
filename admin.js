@@ -526,6 +526,10 @@ function safe(value) {
         .replaceAll("'", "&#39;");
 }
 
+function safeAttr(value) {
+    return safe(value);
+}
+
 window.toggleApproval = toggleApproval;
 window.toggleAdmin = toggleAdmin;
 window.updatePoints = updatePoints;
