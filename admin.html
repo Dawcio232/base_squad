@@ -121,6 +121,25 @@
             <h3>Access Restricted</h3>
             <p class="empty">This page requires an approved admin account.</p>
         </section>
+
+        <section class="panel section hidden" id="adminAuth">
+            <div class="section-head">
+                <h3>Admin Login</h3>
+                <span>Direct Access</span>
+            </div>
+            <div class="auth-card">
+                <p>Log in with your admin email and password.</p>
+                <div class="field-grid">
+                    <input id="adminEmailInput" type="email" placeholder="email" autocomplete="off" />
+                    <input id="adminPasswordInput" type="password" placeholder="password" autocomplete="off" />
+                </div>
+                <div class="actions">
+                    <button class="button" id="adminLoginButton" type="button">Log In</button>
+                    <a class="button secondary" href="./hub.html">Back To Hub</a>
+                </div>
+                <div class="message" id="adminAuthMessage"></div>
+            </div>
+        </section>
     </div>
 
     <script src="./app-config.js"></script>
