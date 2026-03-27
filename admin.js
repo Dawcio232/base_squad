@@ -16,6 +16,8 @@ const profilesList = document.getElementById("profilesList");
 const pointsList = document.getElementById("pointsList");
 const contentList = document.getElementById("contentList");
 const adminMessage = document.getElementById("adminMessage");
+const refreshDebugButton = document.getElementById("refreshDebugButton");
+const debugWrap = document.getElementById("debugWrap");
 
 const announcementTitle = document.getElementById("announcementTitle");
 const announcementBody = document.getElementById("announcementBody");
@@ -40,7 +42,18 @@ const state = {
     profile: null,
     profiles: [],
     announcements: [],
-    challenges: []
+    challenges: [],
+    debug: {
+        sessionUserId: null,
+        sessionEmail: null,
+        profileError: null,
+        profilesError: null,
+        profileRowCount: 0,
+        profilesRowCount: 0,
+        announcementsError: null,
+        challengesError: null,
+        lastAction: "init"
+    }
 };
 
 init();
@@ -56,6 +69,12 @@ async function init() {
 function bindEvents() {
     logoutButton.addEventListener("click", logout);
     adminLoginButton.addEventListener("click", loginDirectly);
+    refreshDebugButton.addEventListener("click", async () => {
+        state.debug.lastAction = "manual diagnostics refresh";
+        await loadAdminState();
+        renderGate();
+        showMessage("Diagnostics refreshed");
+    });
     createAnnouncementButton.addEventListener("click", createAnnouncement);
     createChallengeButton.addEventListener("click", createChallenge);
     createLinkButton.addEventListener("click", createLink);
@@ -81,15 +100,28 @@ function bindEvents() {
 async function loadAdminState() {
     state.profile = null;
     state.profiles = [];
+    state.announcements = [];
+    state.challenges = [];
+    state.debug.profileError = null;
+    state.debug.profilesError = null;
+    state.debug.announcementsError = null;
+    state.debug.challengesError = null;
+    state.debug.profileRowCount = 0;
+    state.debug.profilesRowCount = 0;
+    state.debug.sessionUserId = state.session?.user?.id || null;
+    state.debug.sessionEmail = state.session?.user?.email || null;
 
     if (!state.session?.user) return;
-
-    const userId = state.session.user.id;
 
     const [profileRes, profilesRes] = await Promise.all([
         supabase.rpc("get_my_profile"),
         supabase.rpc("admin_get_profiles")
     ]);
+
+    state.debug.profileError = profileRes.error?.message || null;
+    state.debug.profilesError = profilesRes.error?.message || null;
+    state.debug.profileRowCount = profileRes.data?.length || 0;
+    state.debug.profilesRowCount = profilesRes.data?.length || 0;
 
     state.profile = profileRes.data?.[0] || null;
     state.profiles = profilesRes.data || [];
@@ -99,6 +131,8 @@ async function loadAdminState() {
             supabase.from("announcements").select("*").order("created_at", { ascending: false }),
             supabase.from("challenges").select("*").order("created_at", { ascending: false })
         ]);
+        state.debug.announcementsError = announcementsRes.error?.message || null;
+        state.debug.challengesError = challengesRes.error?.message || null;
         state.announcements = announcementsRes.data || [];
         state.challenges = challengesRes.data || [];
     }
@@ -113,16 +147,19 @@ function renderGate() {
 
     if (!state.session?.user) {
         adminStatus.textContent = "Not Logged In";
+        renderDebug();
         return;
     }
 
     if (!state.profile) {
         adminStatus.textContent = "Loading";
+        renderDebug();
         return;
     }
 
     if (!allowed) {
         adminStatus.textContent = "Access Restricted";
+        renderDebug();
         return;
     }
 
@@ -130,6 +167,7 @@ function renderGate() {
     renderProfiles();
     renderPoints();
     renderContent();
+    renderDebug();
 }
 
 async function loginDirectly() {
@@ -233,6 +271,7 @@ function renderContent() {
 }
 
 async function createAnnouncement() {
+    state.debug.lastAction = "create announcement";
     const title = announcementTitle.value.trim();
     const body = announcementBody.value.trim();
     if (!title || !body) return showMessage("Title and body required", true);
@@ -253,6 +292,7 @@ async function createAnnouncement() {
 }
 
 async function createChallenge() {
+    state.debug.lastAction = "create challenge";
     const title = challengeTitle.value.trim();
     const summary = challengeSummary.value.trim();
     const details = challengeDetails.value.trim();
@@ -283,6 +323,7 @@ async function createChallenge() {
 }
 
 async function createLink() {
+    state.debug.lastAction = "create link";
     const title = linkTitle.value.trim();
     const url = linkUrl.value.trim();
     const description = linkDescription.value.trim();
@@ -311,6 +352,7 @@ async function createLink() {
 }
 
 async function toggleApproval(id, approved) {
+    state.debug.lastAction = `toggle approval ${id}`;
     const { error } = await supabase.rpc("admin_set_profile_approval", {
         target_id: id,
         new_approved: approved
@@ -322,6 +364,7 @@ async function toggleApproval(id, approved) {
 }
 
 async function toggleAdmin(id, isAdmin) {
+    state.debug.lastAction = `toggle admin ${id}`;
     const { error } = await supabase.rpc("admin_set_profile_admin", {
         target_id: id,
         new_is_admin: isAdmin
@@ -333,6 +376,7 @@ async function toggleAdmin(id, isAdmin) {
 }
 
 async function updatePoints(id) {
+    state.debug.lastAction = `update points ${id}`;
     const field = document.getElementById(`points-${id}`);
     const points = Number(field.value || 0);
     const { error } = await supabase.rpc("admin_update_profile_points", {
@@ -346,6 +390,7 @@ async function updatePoints(id) {
 }
 
 async function deleteAnnouncement(id) {
+    state.debug.lastAction = `delete announcement ${id}`;
     const { error } = await supabase.from("announcements").delete().eq("id", id);
     if (error) return showMessage(error.message, true);
     await loadAdminState();
@@ -354,6 +399,7 @@ async function deleteAnnouncement(id) {
 }
 
 async function deleteChallenge(id) {
+    state.debug.lastAction = `delete challenge ${id}`;
     const { error } = await supabase.from("challenges").delete().eq("id", id);
     if (error) return showMessage(error.message, true);
     await loadAdminState();
@@ -362,6 +408,7 @@ async function deleteChallenge(id) {
 }
 
 async function sendMagicLink(email) {
+    state.debug.lastAction = `send magic link ${email}`;
     const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -374,6 +421,7 @@ async function sendMagicLink(email) {
 }
 
 async function sendPasswordReset(email) {
+    state.debug.lastAction = `send password reset ${email}`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: new URL("./update-password.html", window.location.href).href
     });
@@ -382,6 +430,7 @@ async function sendPasswordReset(email) {
 }
 
 async function logout() {
+    state.debug.lastAction = "logout";
     await supabase.auth.signOut();
     window.location.href = "./hub.html";
 }
@@ -389,6 +438,8 @@ async function logout() {
 function showMessage(text, isError = false) {
     adminMessage.textContent = text;
     adminMessage.className = `message ${isError ? "error" : "success"}`;
+    if (isError) console.error("[admin]", text);
+    else console.log("[admin]", text);
 }
 
 function formatDate(value) {
@@ -398,6 +449,29 @@ function formatDate(value) {
         month: "short",
         day: "numeric"
     });
+}
+
+function renderDebug() {
+    const rows = [
+        ["last action", state.debug.lastAction],
+        ["session email", state.debug.sessionEmail || "none"],
+        ["session user id", state.debug.sessionUserId || "none"],
+        ["profile rows", String(state.debug.profileRowCount)],
+        ["profiles rows", String(state.debug.profilesRowCount)],
+        ["profile error", state.debug.profileError || "none"],
+        ["profiles error", state.debug.profilesError || "none"],
+        ["announcements error", state.debug.announcementsError || "none"],
+        ["challenges error", state.debug.challengesError || "none"],
+        ["is admin", String(!!state.profile?.is_admin)],
+        ["approved", String(!!state.profile?.approved)]
+    ];
+
+    debugWrap.innerHTML = rows.map(([label, value]) => `
+        <div class="card">
+            <h4>${safe(label)}</h4>
+            <p>${safe(value)}</p>
+        </div>
+    `).join("");
 }
 
 function safe(value) {
