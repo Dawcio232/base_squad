@@ -9,6 +9,7 @@ const adminGrid = document.getElementById("adminGrid");
 const adminLock = document.getElementById("adminLock");
 const profilesList = document.getElementById("profilesList");
 const pointsList = document.getElementById("pointsList");
+const contentList = document.getElementById("contentList");
 const adminMessage = document.getElementById("adminMessage");
 
 const announcementTitle = document.getElementById("announcementTitle");
@@ -32,7 +33,9 @@ const createLinkButton = document.getElementById("createLinkButton");
 const state = {
     session: null,
     profile: null,
-    profiles: []
+    profiles: [],
+    announcements: [],
+    challenges: []
 };
 
 init();
@@ -73,6 +76,15 @@ async function loadAdminState() {
 
     state.profile = profileRes.data || null;
     state.profiles = profilesRes.data || [];
+
+    if (state.profile?.is_admin && state.profile?.approved) {
+        const [announcementsRes, challengesRes] = await Promise.all([
+            supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+            supabase.from("challenges").select("*").order("created_at", { ascending: false })
+        ]);
+        state.announcements = announcementsRes.data || [];
+        state.challenges = challengesRes.data || [];
+    }
 }
 
 function renderGate() {
@@ -99,6 +111,7 @@ function renderGate() {
     adminStatus.textContent = `${state.profile.display_name || state.profile.email} Admin`;
     renderProfiles();
     renderPoints();
+    renderContent();
 }
 
 function renderProfiles() {
@@ -118,6 +131,8 @@ function renderProfiles() {
                     <button class="button secondary" type="button" onclick="toggleAdmin('${profile.id}', ${profile.is_admin ? "false" : "true"})">
                         ${profile.is_admin ? "Remove Admin" : "Make Admin"}
                     </button>
+                    <button class="button secondary" type="button" onclick="sendMagicLink('${safeAttr(profile.email)}')">Magic Link</button>
+                    <button class="button secondary" type="button" onclick="sendPasswordReset('${safeAttr(profile.email)}')">Reset Password</button>
                 </div>
             </div>
         `).join("")
@@ -139,6 +154,40 @@ function renderPoints() {
         : '<div class="empty">No users found.</div>';
 }
 
+function renderContent() {
+    const announcementCards = state.announcements.map((item) => `
+        <div class="card">
+            <h4>${safe(item.title)}</h4>
+            <p>${safe(item.body)}</p>
+            <div class="meta">
+                <span>announcement</span>
+                <span>${formatDate(item.created_at)}</span>
+            </div>
+            <div class="actions">
+                <button class="button secondary" type="button" onclick="deleteAnnouncement(${item.id})">Delete</button>
+            </div>
+        </div>
+    `);
+
+    const challengeCards = state.challenges.map((item) => `
+        <div class="card">
+            <h4>${safe(item.title)}</h4>
+            <p>${safe(item.summary)}</p>
+            <div class="meta">
+                <span>challenge</span>
+                <span>${item.points} pts</span>
+                <span>${safe(item.status)}</span>
+            </div>
+            <div class="actions">
+                <button class="button secondary" type="button" onclick="deleteChallenge(${item.id})">Delete</button>
+            </div>
+        </div>
+    `);
+
+    const cards = [...announcementCards, ...challengeCards];
+    contentList.innerHTML = cards.length ? cards.join("") : '<div class="empty">No announcements or challenges found.</div>';
+}
+
 async function createAnnouncement() {
     const title = announcementTitle.value.trim();
     const body = announcementBody.value.trim();
@@ -154,6 +203,8 @@ async function createAnnouncement() {
 
     announcementTitle.value = "";
     announcementBody.value = "";
+    await loadAdminState();
+    renderGate();
     showMessage("Announcement published");
 }
 
@@ -182,6 +233,8 @@ async function createChallenge() {
     challengeDetails.value = "";
     challengePoints.value = "";
     challengeStatus.value = "open";
+    await loadAdminState();
+    renderGate();
     showMessage("Challenge created");
 }
 
@@ -239,6 +292,42 @@ async function updatePoints(id) {
     showMessage("Points updated");
 }
 
+async function deleteAnnouncement(id) {
+    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    if (error) return showMessage(error.message, true);
+    await loadAdminState();
+    renderGate();
+    showMessage("Announcement deleted");
+}
+
+async function deleteChallenge(id) {
+    const { error } = await supabase.from("challenges").delete().eq("id", id);
+    if (error) return showMessage(error.message, true);
+    await loadAdminState();
+    renderGate();
+    showMessage("Challenge deleted");
+}
+
+async function sendMagicLink(email) {
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+            shouldCreateUser: false,
+            emailRedirectTo: new URL("./hub.html", window.location.href).href
+        }
+    });
+    if (error) return showMessage(error.message, true);
+    showMessage(`Magic link sent to ${email}`);
+}
+
+async function sendPasswordReset(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: new URL("./update-password.html", window.location.href).href
+    });
+    if (error) return showMessage(error.message, true);
+    showMessage(`Password reset sent to ${email}`);
+}
+
 async function logout() {
     await supabase.auth.signOut();
     window.location.href = "./hub.html";
@@ -247,6 +336,15 @@ async function logout() {
 function showMessage(text, isError = false) {
     adminMessage.textContent = text;
     adminMessage.className = `message ${isError ? "error" : "success"}`;
+}
+
+function formatDate(value) {
+    if (!value) return "No Date";
+    return new Date(value).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+    });
 }
 
 function safe(value) {
@@ -261,3 +359,7 @@ function safe(value) {
 window.toggleApproval = toggleApproval;
 window.toggleAdmin = toggleAdmin;
 window.updatePoints = updatePoints;
+window.deleteAnnouncement = deleteAnnouncement;
+window.deleteChallenge = deleteChallenge;
+window.sendMagicLink = sendMagicLink;
+window.sendPasswordReset = sendPasswordReset;
