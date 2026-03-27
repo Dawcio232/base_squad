@@ -48,6 +48,11 @@ const state = {
         sessionEmail: null,
         profileError: null,
         profilesError: null,
+        authError: null,
+        authException: null,
+        authEmail: null,
+        authStartedAt: null,
+        authFinishedAt: null,
         profileRowCount: 0,
         profilesRowCount: 0,
         announcementsError: null,
@@ -109,6 +114,8 @@ async function loadAdminState() {
     state.debug.profilesError = null;
     state.debug.announcementsError = null;
     state.debug.challengesError = null;
+    state.debug.authError = null;
+    state.debug.authException = null;
     state.debug.profileRowCount = 0;
     state.debug.profilesRowCount = 0;
     state.debug.sessionUserId = state.session?.user?.id || null;
@@ -175,33 +182,56 @@ function renderGate() {
 
 async function loginDirectly() {
     state.debug.lastAction = "login click";
-    renderDebug();
     const email = adminEmailInput.value.trim();
     const password = adminPasswordInput.value.trim();
+    state.debug.authEmail = email || null;
+    state.debug.authStartedAt = new Date().toISOString();
+    state.debug.authFinishedAt = null;
+    state.debug.authError = null;
+    state.debug.authException = null;
+    renderDebug();
 
     adminEmailInput.classList.remove("error");
     adminPasswordInput.classList.remove("error");
     adminAuthMessage.textContent = "";
     adminAuthMessage.className = "message";
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        state.debug.lastAction = "login error";
-        renderDebug();
-        adminEmailInput.classList.add("error");
-        adminPasswordInput.classList.add("error");
-        adminAuthMessage.textContent = error.message;
-        adminAuthMessage.className = "message error";
-        return;
-    }
+    try {
+        const { data, error } = await Promise.race([
+            supabase.auth.signInWithPassword({ email, password }),
+            new Promise((_, reject) => {
+                setTimeout(() => reject(new Error("Auth request timeout after 12s")), 12000);
+            })
+        ]);
 
-    state.debug.lastAction = "login success";
-    state.session = data.session;
-    await loadAdminState();
-    adminPasswordInput.value = "";
-    adminAuthMessage.textContent = "Authentication confirmed";
-    adminAuthMessage.className = "message success";
-    renderGate();
+        state.debug.authFinishedAt = new Date().toISOString();
+
+        if (error) {
+            state.debug.lastAction = "login error";
+            state.debug.authError = error.message;
+            renderDebug();
+            adminEmailInput.classList.add("error");
+            adminPasswordInput.classList.add("error");
+            adminAuthMessage.textContent = error.message;
+            adminAuthMessage.className = "message error";
+            return;
+        }
+
+        state.debug.lastAction = "login success";
+        state.session = data.session;
+        await loadAdminState();
+        adminPasswordInput.value = "";
+        adminAuthMessage.textContent = "Authentication confirmed";
+        adminAuthMessage.className = "message success";
+        renderGate();
+    } catch (error) {
+        state.debug.lastAction = "login exception";
+        state.debug.authFinishedAt = new Date().toISOString();
+        state.debug.authException = error instanceof Error ? error.message : String(error);
+        renderDebug();
+        adminAuthMessage.textContent = state.debug.authException;
+        adminAuthMessage.className = "message error";
+    }
 }
 
 function renderProfiles() {
@@ -464,6 +494,11 @@ function renderDebug() {
         ["last action", state.debug.lastAction],
         ["session email", state.debug.sessionEmail || "none"],
         ["session user id", state.debug.sessionUserId || "none"],
+        ["auth email", state.debug.authEmail || "none"],
+        ["auth started", state.debug.authStartedAt || "none"],
+        ["auth finished", state.debug.authFinishedAt || "none"],
+        ["auth error", state.debug.authError || "none"],
+        ["auth exception", state.debug.authException || "none"],
         ["profile rows", String(state.debug.profileRowCount)],
         ["profiles rows", String(state.debug.profilesRowCount)],
         ["profile error", state.debug.profileError || "none"],
