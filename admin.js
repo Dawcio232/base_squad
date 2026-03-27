@@ -56,9 +56,12 @@ const state = {
     }
 };
 
+console.log("[admin.js] boot v2");
+
 init();
 
 async function init() {
+    state.debug.lastAction = "boot";
     const { data } = await supabase.auth.getSession();
     state.session = data.session;
     await loadAdminState();
@@ -171,6 +174,8 @@ function renderGate() {
 }
 
 async function loginDirectly() {
+    state.debug.lastAction = "login click";
+    renderDebug();
     const email = adminEmailInput.value.trim();
     const password = adminPasswordInput.value.trim();
 
@@ -181,6 +186,8 @@ async function loginDirectly() {
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+        state.debug.lastAction = "login error";
+        renderDebug();
         adminEmailInput.classList.add("error");
         adminPasswordInput.classList.add("error");
         adminAuthMessage.textContent = error.message;
@@ -188,6 +195,7 @@ async function loginDirectly() {
         return;
     }
 
+    state.debug.lastAction = "login success";
     state.session = data.session;
     await loadAdminState();
     adminPasswordInput.value = "";
